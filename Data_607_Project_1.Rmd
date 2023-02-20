@@ -104,7 +104,7 @@ new_processed_df2
 ```
 
 
-With the data and columns now created and structured, the final step is inputting new_processed_df2 into a CSV file.
+With the data and columns now created and structured, the final step is inputting new_processed_df2 into a CSV file:
 
 ```{r}
 path_csv <- getwd()
