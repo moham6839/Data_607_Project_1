@@ -1,0 +1,116 @@
+---
+title: "Data_607_Project_1"
+author: "Mohamed Hassan-El Serafi"
+date: "2023-02-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+# Reading Raw Data File
+
+Using readLines, I input the file of the Chess Tournament data:
+
+```{r}
+df <- readLines("https://raw.githubusercontent.com/moham6839/Data_607_Project_1/main/tournamentinfo.txt")
+df
+```
+
+
+
+# Extracting Data
+
+Using str_extract_all, I extracted data that will help form 5 columns for the csv file: Player Name, Player State, Total Points, Player-PreRating, and Average Pre-Chess Rating of Opponents.
+
+
+
+```{r}
+Player_Number <- as.numeric(unlist(str_extract_all(df,"(?<=\\s{3,4})\\d{1,2}(?=\\s)")))
+Player_Name <- unlist(str_extract_all(df,"(?<=\\d\\s\\|\\s)([A-z, -]*\\s){1,}[[:alpha:]]*(?=\\s*\\|)"))
+Player_State <- unlist(str_extract_all(df, "[[:upper:]]{2}(?=\\s\\|)"))
+Total_Points <- as.numeric(unlist(str_extract_all(df, "(?<=\\|)\\d\\.\\d")))
+Player_PreRating <- as.numeric(unlist(str_extract_all(df, "(?<=R:\\s{1,2})(\\d{3,4}(?=\\s))|(\\d{3,4}(?=P\\d{1,2}\\s*-))")))
+
+
+processed_df <- data.frame(Player_Number, Player_Name, Player_State, Total_Points, Player_PreRating)
+
+
+str(processed_df)
+```
+Extracting the number of rows  
+
+
+```{r}
+Number_of_Rows <- df[seq(5, 196, 3)]
+Opponent_Numbers<- as.numeric(unlist(str_extract_all(Number_of_Rows, "(?<=\\|(W|L|D)\\s{2,3})[[:digit:]]{1,2}(?=\\|)|((?<!->)(?<=\\|(U|H|B|X))\\s{4}(?=\\|))")))
+```
+
+Creating a Matrix and columns for Total Opponent and Average Pre-Chess Rating:
+
+
+```{r}
+new_matrix_df <- matrix(data = NA, nrow = 64, ncol = 2)
+```
+
+```{r}
+colnames(new_matrix_df) <- c("Total_Opponent_PCR", "Average_Opponent_PCR")
+```
+
+The counter is created to count Opponent_Numbers. The for loop sequences each of the 7 entries that correspond with the 7 chess matches for each person, adding them together for the total opponents’ score and then dividing them by the number of entries that were not NA in that sequence to find the average.
+
+
+```{r}
+counter <- 0
+```
+
+```{r}
+for(i in seq(from=1, to=length(Opponent_Numbers)-6, by=7)) {
+  counter <- counter + 1
+  
+
+  new_matrix_df[counter, 1] <- (sum(subset(processed_df$Player_PreRating, 
+                                        processed_df$Player_Number %in% Opponent_Numbers[seq(from=i,to=i+6, by=1)])))
+  
+
+  new_matrix_df[counter, 2] <- new_matrix_df[counter, 1] / length(subset(Opponent_Numbers[seq(from=i, to=i+6, by=1)],!is.na(Opponent_Numbers[seq(from=i, to=i+6, by=1)])))
+  
+}
+```
+
+
+```{r}
+head(new_matrix_df, 5)
+```
+This rounds the Average_Opponent_PCR to the nearest point:
+
+```{r}
+new_matrix_df[, 2] <- round(new_matrix_df[,2], digits = 0)
+new_matrix_df
+```
+
+With the total and average opponent PCR formed, cbind will merge the processed_df created earlier and the new_matrix_df containing the aforementioned columns, which will be stored in new_processed_df2:
+
+```{r}
+new_processed_df <- cbind(processed_df, new_matrix_df[, 2])
+new_processed_df2 <- rename(new_processed_df, Average_Opponent_PCR = `new_matrix_df[, 2]`)
+```
+
+```{r}
+new_processed_df2
+```
+
+
+With the data and columns now created and structured, the final step is inputting new_processed_df2 into a CSV file.
+
+```{r}
+path_csv <- getwd()
+```
+
+```{r}
+write.csv(new_processed_df2, file.path(path_csv, "Chess_Tourney_Data.csv"))
+```
+
